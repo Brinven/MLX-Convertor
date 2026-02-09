@@ -1,0 +1,7 @@
+{
+  "simple": "What is the capital of France?",
+  "rag": "Use the following context to answer the question:\n\nContext: Paris is the capital and largest city of France.\n\nQuestion: What is the capital of France?",
+  "creative": "Write a haiku about programming.",
+  "technical": "Explain what a neural network is in simple terms.",
+  "multilingual": "Traduire en français: Hello, how are you?"
+}
