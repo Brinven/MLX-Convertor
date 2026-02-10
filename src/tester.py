@@ -87,18 +87,17 @@ def generate_text(
 
     try:
         from mlx_lm import generate
+        from mlx_lm.sample_utils import make_sampler
 
-        kwargs = {
-            "model": model,
-            "tokenizer": tokenizer,
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temp": temperature,
-            "top_p": top_p,
-            "repetition_penalty": repetition_penalty,
-        }
+        sampler = make_sampler(temp=temperature, top_p=top_p)
 
-        response = generate(**kwargs)
+        response = generate(
+            model=model,
+            tokenizer=tokenizer,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            sampler=sampler,
+        )
 
         return {"success": True, "response": response, "error": ""}
 

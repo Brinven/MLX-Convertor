@@ -58,18 +58,20 @@ def list_converted_models(output_dir: str = "./models") -> list:
     if not output_path.exists():
         return models
 
-    for item in sorted(output_path.iterdir()):
-        if item.is_dir():
-            # Check if it looks like an MLX model (has config.json or *.safetensors)
-            has_config = (item / "config.json").exists()
-            has_weights = any(item.glob("*.safetensors")) or any(item.glob("*.npz"))
+    # Walk all subdirectories to find model folders at any depth
+    for dirpath, dirnames, filenames in os.walk(output_path):
+        item = Path(dirpath)
+        has_config = "config.json" in filenames
+        has_weights = any(f.endswith(".safetensors") or f.endswith(".npz") for f in filenames)
 
-            if has_config or has_weights:
-                size = get_model_size(item)
-                models.append({
-                    "name": item.name,
-                    "path": str(item),
-                    "size": format_size(size),
-                })
+        if has_config or has_weights:
+            size = get_model_size(item)
+            models.append({
+                "name": item.name,
+                "path": str(item),
+                "size": format_size(size),
+            })
+            # Don't descend into this model's subdirectories
+            dirnames.clear()
 
-    return models
+    return sorted(models, key=lambda m: m["name"])

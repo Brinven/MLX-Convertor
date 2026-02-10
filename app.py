@@ -64,6 +64,12 @@ def load_example_prompt(example_name):
     return EXAMPLE_PROMPTS.get(example_name, "")
 
 
+def get_model_choices():
+    """Get list of converted model paths for the dropdown."""
+    models = list_converted_models(DEFAULT_OUTPUT_DIR)
+    return [m["path"] for m in models]
+
+
 def refresh_model_list():
     """Refresh the list of converted models."""
     models = list_converted_models(DEFAULT_OUTPUT_DIR)
@@ -148,11 +154,15 @@ def create_app():
 
                 with gr.Row():
                     with gr.Column(scale=2):
-                        test_model_path = gr.Textbox(
-                            label="Model Path",
-                            placeholder="e.g., ./models/LFM2-1.2B-RAG-q4",
-                            info="Path to a converted MLX model directory",
-                        )
+                        with gr.Row():
+                            test_model_path = gr.Dropdown(
+                                choices=get_model_choices(),
+                                label="Model",
+                                allow_custom_value=True,
+                                info="Select a converted model or type a custom path",
+                                scale=4,
+                            )
+                            refresh_models_btn = gr.Button("🔄", size="sm", scale=0, min_width=50)
                         test_prompt = gr.Textbox(
                             label="Prompt",
                             placeholder="Enter your prompt here...",
@@ -200,6 +210,10 @@ def create_app():
                     show_copy_button=True,
                 )
 
+                refresh_models_btn.click(
+                    fn=lambda: gr.update(choices=get_model_choices()),
+                    outputs=test_model_path,
+                )
                 generate_btn.click(
                     fn=handle_generate,
                     inputs=[test_model_path, test_prompt, test_max_tokens, test_temperature, test_top_p, test_rep_penalty],
@@ -244,4 +258,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.launch(inbrowser=True)
+    app.launch(server_name="0.0.0.0", inbrowser=True)
