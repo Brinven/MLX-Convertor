@@ -8,7 +8,7 @@ import gradio as gr
 
 from src.converter import convert_model
 from src.tester import generate_text, clear_cache
-from src.utils import list_converted_models
+from src.utils import list_converted_models, zip_model, import_model_zip
 
 # Load example prompts
 EXAMPLES_PATH = Path(__file__).parent / "examples" / "example_prompts.json"
@@ -79,6 +79,45 @@ def refresh_model_list():
     for m in models:
         lines.append(f"• **{m['name']}** — {m['size']}\n  `{m['path']}`")
     return "\n\n".join(lines)
+
+
+def get_model_names():
+    """Get list of converted model names for the selector dropdown."""
+    models = list_converted_models(DEFAULT_OUTPUT_DIR)
+    return [m["name"] for m in models]
+
+
+# --- Download/Upload handlers ---
+
+def handle_download(model_name):
+    """Handle the download button click."""
+    if not model_name:
+        return gr.update(), "❌ Please select a model to download."
+
+    # Find the model path by name
+    models = list_converted_models(DEFAULT_OUTPUT_DIR)
+    match = next((m for m in models if m["name"] == model_name), None)
+    if not match:
+        return gr.update(), f"❌ Model '{model_name}' not found."
+
+    result = zip_model(match["path"])
+    if result["success"]:
+        return result["zip_path"], f"✅ {result['message']}"
+    else:
+        return gr.update(), f"❌ {result['message']}"
+
+
+def handle_upload(file):
+    """Handle the upload/import of a model zip."""
+    if file is None:
+        return "❌ No file uploaded."
+
+    file_path = file.name if hasattr(file, "name") else str(file)
+    result = import_model_zip(file_path, DEFAULT_OUTPUT_DIR)
+    if result["success"]:
+        return f"✅ {result['message']}"
+    else:
+        return f"❌ {result['message']}"
 
 
 # --- Build Gradio UI ---
@@ -228,8 +267,38 @@ def create_app():
             with gr.Tab("📂 Models", id="models"):
                 gr.Markdown("### Converted Models")
                 models_display = gr.Markdown("Click Refresh to see converted models.")
-                refresh_btn = gr.Button("🔄 Refresh", size="sm")
-                refresh_btn.click(fn=refresh_model_list, outputs=models_display)
+                with gr.Row():
+                    refresh_btn = gr.Button("🔄 Refresh", size="sm")
+                    model_selector = gr.Dropdown(
+                        choices=get_model_names(),
+                        label="Select Model",
+                        scale=3,
+                    )
+                refresh_btn.click(
+                    fn=lambda: (refresh_model_list(), gr.update(choices=get_model_names())),
+                    outputs=[models_display, model_selector],
+                )
+
+                gr.Markdown("### Download Model")
+                gr.Markdown("Download a model as a zip file for transfer to another machine.")
+                download_btn = gr.Button("📥 Download as Zip", variant="primary")
+                download_status = gr.Textbox(label="Status", lines=2, interactive=False)
+                download_file = gr.File(label="Download", interactive=False)
+                download_btn.click(
+                    fn=handle_download,
+                    inputs=model_selector,
+                    outputs=[download_file, download_status],
+                )
+
+                gr.Markdown("### Import Model")
+                gr.Markdown("Upload a model zip file (e.g., from Heretic Converter on your PC).")
+                upload_file = gr.File(label="Upload Model Zip", file_types=[".zip"])
+                import_status = gr.Textbox(label="Import Status", lines=2, interactive=False)
+                upload_file.change(
+                    fn=handle_upload,
+                    inputs=upload_file,
+                    outputs=import_status,
+                )
 
             # === About Tab ===
             with gr.Tab("ℹ️ About", id="about"):
